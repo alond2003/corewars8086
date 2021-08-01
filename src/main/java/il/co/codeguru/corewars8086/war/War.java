@@ -56,11 +56,17 @@ public class War {
     /** The listener for war events */
     private CompetitionEventListener m_warListener;
 
+    private final boolean zombiesMode;
+    
+    /** end war on zombies mode */
+    private boolean endWar;
+    
     /**
      * Constructor.
      * Fills the Arena with its initial data. 
      */
-    public War(MemoryEventListener memoryListener, CompetitionEventListener warListener, boolean startPaused) {
+    public War(MemoryEventListener memoryListener, CompetitionEventListener warListener, boolean startPaused,
+    		boolean zombiesMode) {
     	isPaused = startPaused;
         m_warListener = warListener;
         m_warriors = new Warrior[MAX_WARRIORS];
@@ -69,7 +75,9 @@ public class War {
         m_core = new RealModeMemoryImpl();
         m_nextFreeAddress = RealModeAddress.PARAGRAPH_SIZE *
             (ARENA_SEGMENT + RealModeAddress.PARAGRAPHS_IN_SEGMENT);
-
+        this.zombiesMode = zombiesMode;
+        this.endWar = false;
+        
         // initialize arena
         for (int offset = 0; offset < ARENA_SIZE; ++offset) {
             RealModeAddress tmp = new RealModeAddress(ARENA_SEGMENT, (short)offset);
@@ -123,10 +131,17 @@ public class War {
                     m_warListener.onWarriorDeath(warrior.getName(), "CPU exception");
                     warrior.kill();
                     --m_numWarriorsAlive;
+                    
+                    if(this.zombiesMode && warrior.isZombie() && this.allZombiesDead())
+                    	this.endWar = true;
+                    
                 } catch (MemoryException e) {
                     m_warListener.onWarriorDeath(warrior.getName(), "memory exception");
                     warrior.kill();
                     --m_numWarriorsAlive;
+                    
+                    if(this.zombiesMode && warrior.isZombie() && this.allZombiesDead())
+                    	this.endWar = true;
                 }
             }
         }
@@ -136,6 +151,9 @@ public class War {
      * @return whether or not the War is over.
      */
     public boolean isOver() {
+    	if(this.zombiesMode)
+    		return this.endWar;
+    	
         return (m_numWarriorsAlive < 2);
     }
 	
@@ -230,7 +248,8 @@ public class War {
                 loadAddress,
                 initialStack,
                 groupSharedMemory,
-                GROUP_SHARED_MEMORY_SIZE);
+                GROUP_SHARED_MEMORY_SIZE,
+                warrior.isZombie());
 
             // load warrior to arena
             for (int offset = 0; offset < warriorData.length; ++offset) {
@@ -360,14 +379,28 @@ public class War {
      * Updates the scores in a given score-board.
      */
     public void updateScores(WarriorRepository repository) {
-        float score = (float)1.0 / m_numWarriorsAlive;
-    	for (int i = 0; i < m_numWarriors; ++i) {
-            Warrior warrior = m_warriors[i];
-            if (warrior.isAlive()) {
-                repository.addScore(warrior.getName(), score);
-            } /*else {    			
-                scoreBoard.addScore(warrior.getName(), 0);
-            }*/
+    	
+    	if(this.zombiesMode) {
+    		for(int i = 0;i < this.m_numWarriors;i++) {
+    			if(this.m_warriors[i] != null && !this.m_warriors[i].isZombie()) {
+    				int zombiesCaptured = this.getNumZombiesCaptured(this.m_warriors[i]);
+    				
+    				repository.addScore(this.m_warriors[i].getName(), zombiesCaptured);
+    			}
+    				
+    		}
+    	}
+    	
+    	else {
+			float score = (float)1.0 / m_numWarriorsAlive;
+	    	for (int i = 0; i < m_numWarriors; ++i) {
+	            Warrior warrior = m_warriors[i];
+	            if (warrior.isAlive()) {
+	                repository.addScore(warrior.getName(), score);
+	            } /*else {    			
+	                scoreBoard.addScore(warrior.getName(), 0);
+	            }*/
+	    	}
     	}
     }
     
@@ -405,6 +438,47 @@ public class War {
     public RealModeMemoryImpl getMemory(){
     	return m_core;
     }
+
+    
+    public boolean allZombiesDead()
+    {
+    	for(int i = 0;i < this.m_numWarriors;i++)
+    		if(this.m_warriors[i] != null && this.m_warriors[i].isZombie() && this.m_warriors[i].isAlive())
+    			return false;
+    	return true;
+    }
+    
+    
+    public int getNumZombiesCaptured(Warrior warrior)
+    {	
+    	int counter = 0;
+    	
+    	int start = new RealModeAddress(ARENA_SEGMENT, warrior.getLoadOffset()).getLinearAddress();
+		int end = new RealModeAddress(ARENA_SEGMENT, (short)(start + warrior.getCodeSize())).getLinearAddress();
+    	
+    	for(int i = 0;i < this.m_numWarriors;i++) {
+    		if(this.m_warriors[i].isZombie()) {
+    			int ip = new RealModeAddress(this.m_warriors[i].getCpuState().getCS(),
+    					this.m_warriors[i].getCpuState().getIP()).getLinearAddress();
+    			
+    			if(end < start) {
+    		    	int arenaStart = new RealModeAddress(ARENA_SEGMENT, (short)0).getLinearAddress();
+    		    	int arenaEnd = arenaStart + ARENA_SIZE;
+    				
+    		    	if((start <= ip && ip < arenaEnd) || (arenaStart <= ip && ip < end))
+    		    		counter++;
+    			}
+    			
+    			else if(start <= ip && ip < end)
+    				counter++;
+    		}
+    	}
+    	
+    	return counter;
+    }
+    
+    
+    
     
     
 }

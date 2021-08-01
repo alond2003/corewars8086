@@ -31,12 +31,15 @@ public class Competition {
     private long seed = 0;
 
     private boolean abort;
+    
+    private boolean zombiesMode;
+    
 
     public Competition() throws IOException {
-        this(true);
+        this(true, false);
     }
 
-    public Competition(boolean shouldReadWarriorsFile) throws IOException {
+    public Competition(boolean shouldReadWarriorsFile, boolean zombiesMode) throws IOException {
         warriorRepository = new WarriorRepository(shouldReadWarriorsFile);
 
         competitionEventCaster = new EventMulticaster(CompetitionEventListener.class);
@@ -45,6 +48,7 @@ public class Competition {
         memoryEventListener = (MemoryEventListener) memoryEventCaster.getProxy();
         speed = MAXIMUM_SPEED;
         abort = false;
+        this.zombiesMode = zombiesMode;
     }
 
     public void runCompetition (int warsPerCombination, int warriorsPerGroup, boolean startPaused) throws Exception {
@@ -70,7 +74,7 @@ public class Competition {
     }
 
     public void runWar(WarriorGroup[] warriorGroups,boolean startPaused) throws Exception {
-        currentWar = new War(memoryEventListener, competitionEventListener, startPaused);
+        currentWar = new War(memoryEventListener, competitionEventListener, startPaused, this.zombiesMode);
         currentWar.setSeed(this.seed);
         competitionEventListener.onWarStart();
         currentWar.loadWarriorGroups(warriorGroups);
@@ -181,6 +185,16 @@ public class Competition {
 
     public long getSeed(){
         return seed;
+    }
+    
+    
+    public void setZombiesMode(boolean zombiesMode) {
+    	this.zombiesMode = zombiesMode;
+    }
+    
+    
+    public boolean getZombiesMode() {
+    	return zombiesMode;
     }
     
 }

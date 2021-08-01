@@ -21,6 +21,7 @@ public class CompetitionWindow extends JFrame
     private JButton runWarButton;
     private JLabel warCounterDisplay;
     private JCheckBox showBattleCheckBox;
+    private JCheckBox zombiesModeCheckBox;
     private JTextField battlesPerGroupField;
     private JTextField warriorsPerGroupField;
     private WarFrame battleFrame;
@@ -60,6 +61,7 @@ public class CompetitionWindow extends JFrame
         showBattleCheckBox = new JCheckBox("Show war on start");
         buttonPanel.add(showBattleCheckBox);
         
+        
         startPausedCheckBox = new JCheckBox("Start Paused");
 		startPausedCheckBox.addActionListener(new ActionListener() {
 			@Override
@@ -68,8 +70,12 @@ public class CompetitionWindow extends JFrame
 					showBattleCheckBox.setSelected(true);
 			}
 		});
+		
 		buttonPanel.add(startPausedCheckBox);
         
+		zombiesModeCheckBox = new JCheckBox("Zombies Mode");
+		buttonPanel.add(zombiesModeCheckBox);
+		
         controlArea.add(buttonPanel);
         // -------------
         controlArea.add(new JSeparator(JSeparator.HORIZONTAL));
@@ -119,6 +125,8 @@ public class CompetitionWindow extends JFrame
      */
     public boolean runWar() {
         try {
+        	competition.setZombiesMode(this.zombiesModeCheckBox.isSelected());
+        	
             long seedValue;
             if (seed.getText().startsWith(SEED_PREFIX)){
                 seedValue = Long.parseLong(seed.getText().substring(SEED_PREFIX.length()));
@@ -155,6 +163,7 @@ public class CompetitionWindow extends JFrame
         } catch (NumberFormatException e2) {
             JOptionPane.showMessageDialog(this, "Error in configuration");
         }
+        
         return false;
     }
 
@@ -256,6 +265,8 @@ public class CompetitionWindow extends JFrame
             public void run() {
                 warCounterDisplay.setText("Wars so far:" + warCounter +
                     " (out of " + totalWars + ")");
+                
+                //pack();
             };
         });
     }
@@ -281,6 +292,8 @@ public class CompetitionWindow extends JFrame
             public void run() {
                 warCounterDisplay.setText("The competition is over. " +
                     warCounter + " wars were run.");
+                
+                pack();
             };
         });
         warThread = null;

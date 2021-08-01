@@ -35,7 +35,8 @@ public class Warrior {
         RealModeAddress loadAddress,
         RealModeAddress initialStack,
         RealModeAddress groupSharedMemory,
-        short groupSharedMemorySize) {
+        short groupSharedMemorySize,
+        boolean zombie) {
 
         m_name = name;
         m_codeSize = codeSize;
@@ -81,7 +82,9 @@ public class Warrior {
 
         m_cpu = new Cpu(m_state, m_memory);
 
-        m_isAlive = true;		
+        m_isAlive = true;	
+        
+        this.zombie = zombie;
     }
 
     /**
@@ -186,6 +189,12 @@ public class Warrior {
     public CpuState getCpuState(){
     	return m_state;
     }
+    
+    
+    public boolean isZombie() {
+    	return zombie;
+    }
+    
 
     /** Warrior's name */
     private final String m_name;	
@@ -201,4 +210,7 @@ public class Warrior {
     private Cpu m_cpu;
     /** Whether or not the warrior is still alive */
     private boolean m_isAlive;
+    /** Whether the warrior is a zombie */
+    private final boolean zombie;
+    
 }
